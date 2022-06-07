@@ -2,8 +2,8 @@
   "manifest_version": 2,
   "name": "Peacock",
   "version": "1.0",
-  "description": "Dynamic colorful Firefox title bars",
-  "homepage_url": "https://github.com/DaveDuck321/Colorful-window-theme",
+  "description": "Customize the color of your Firefox window title bars.",
+  "homepage_url": "https://github.com/benmccown/firefox-peacock",
   "permissions": ["tabs", "theme", "storage"],
 
   "icons": {

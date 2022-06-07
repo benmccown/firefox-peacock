@@ -1,30 +1,30 @@
-const COLORS = [
-  '#ec5f67',
-  '#db7c48',
-  '#e3b65d',
-  '#99c794',
-  '#5fb3b3',
-  '#6699cc',
-  '#c594c5',
-  '#ab7967',
-];
+// Config
+const COLORS = ['#ec5f67', '#db7c48', '#e3b65d', '#99c794', '#5fb3b3', '#6699cc', '#c594c5', '#ab7967'];
 
+// Config End
+
+// Colors Utils
 type RgbColor = {
   r: number;
   g: number;
   b: number;
 };
 
-function rgbValueToHex(colorValue: number) {
+function colorSingleRgbValueToHex(colorValue: number) {
   const hex = colorValue.toString(16);
   return hex.length == 1 ? '0' + hex : hex;
 }
 
-function rgbToHex(r: number, g: number, b: number) {
-  return '#' + rgbValueToHex(r) + rgbValueToHex(g) + rgbValueToHex(b);
+function colorRgbToHex(rgbColor: RgbColor) {
+  return (
+    '#' +
+    colorSingleRgbValueToHex(rgbColor.r) +
+    colorSingleRgbValueToHex(rgbColor.g) +
+    colorSingleRgbValueToHex(rgbColor.b)
+  );
 }
 
-function hexToRgb(hexColor: string): RgbColor {
+function colorHexToRgb(hexColor: string): RgbColor {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hexColor);
   if (!result) {
     throw new Error('Could not convert hex color to rgb.');
@@ -37,17 +37,94 @@ function hexToRgb(hexColor: string): RgbColor {
 }
 
 function darkenHexColor(hexColor: string, darkenBy: number) {
-  const rgbColor = hexToRgb(hexColor);
-  const darkerRgbColor = {
+  const rgbColor = colorHexToRgb(hexColor);
+  const darkerRgbColor: RgbColor = {
     r: Math.max(rgbColor.r - darkenBy, 0),
     g: Math.max(rgbColor.g - darkenBy, 0),
     b: Math.max(rgbColor.b - darkenBy, 0),
   };
-  return rgbToHex(darkerRgbColor.r, darkerRgbColor.g, darkerRgbColor.b);
+  return colorRgbToHex(darkerRgbColor);
 }
 
+function getRandomColor(): string {
+  const randomizer = Math.floor(Math.random() * COLORS.length);
+  return COLORS[randomizer];
+}
+// Colors Utils End
+
+// Storage Utils
+const windowsToColorMap = new Map();
+
+async function loadWindowToMemory(windowId: number) {
+  const colorValue = await getWindowColorLocalStorage(windowId);
+  if (!colorValue) {
+    return;
+  }
+  setWindowColorInMemory(windowId, colorValue);
+}
+
+function removeWindow(windowId: number) {
+  windowsToColorMap.delete(windowId);
+  const keyString = getStorageKey(windowId);
+  browser.storage.local.remove(keyString);
+}
+
+async function saveWindowColor(windowId: number, color: string) {
+  setWindowColorInMemory(windowId, color);
+  await setWindowColorLocalStorage(windowId, color);
+}
+
+function isWindowColorInMemory(windowId: number): boolean {
+  return windowsToColorMap.has(windowId);
+}
+
+function getWindowColorInMemory(windowId: number): string {
+  return windowsToColorMap.get(windowId);
+}
+
+function setWindowColorInMemory(windowId: number, color: string) {
+  windowsToColorMap.set(windowId, color);
+}
+
+async function setWindowColorLocalStorage(windowId: number, color: string) {
+  const keyString = getStorageKey(windowId);
+  const storageObject: Record<string, any> = {};
+  const colorValue = color;
+  storageObject[keyString] = {
+    colorValue,
+  };
+  await browser.storage.local.set(storageObject);
+}
+
+async function isWindowColorInLocalStorage(windowId: number): Promise<boolean> {
+  const keyString = getStorageKey(windowId);
+
+  const storageObject = await browser.storage.local.get(keyString);
+  const colorStorage = storageObject[keyString] as ColorStorage;
+
+  return colorStorage ? true : false;
+}
+
+async function getWindowColorLocalStorage(windowId: number): Promise<string | undefined> {
+  const keyString = getStorageKey(windowId);
+
+  const storageObject = await browser.storage.local.get(keyString);
+  const colorStorage = storageObject[keyString] as ColorStorage;
+
+  if (!colorStorage) {
+    return undefined;
+  }
+  return colorStorage.colorValue;
+}
+
+function getStorageKey(windowId: number) {
+  return `peacockColor${windowId}`;
+}
+// Storage Utils End
+
+// Theme Utils
 function buildTheme(color: string) {
-  const rgbColor = hexToRgb(color);
+  const rgbColor = colorHexToRgb(color);
   let textColor = '#000000';
   if (rgbColor.r * 0.299 + rgbColor.g * 0.587 + rgbColor.b * 0.114 <= 186) {
     textColor = '#ffffff';
@@ -62,14 +139,6 @@ function buildTheme(color: string) {
   };
 }
 
-// function buildThemes(colors: string[]) {
-//   const result = [];
-//   for (const color of colors) {
-//     result.push(buildTheme(color));
-//   }
-//   return result;
-// }
-
 async function preserveExistingTheme(newTheme: any) {
   const currentTheme = await browser.theme.getCurrent();
   const joinedTheme = {
@@ -81,73 +150,45 @@ async function preserveExistingTheme(newTheme: any) {
   };
   return joinedTheme;
 }
+// Theme Utils End
 
-async function applyThemeToWindow(window: browser.windows.Window) {
-  const wrappedTheme = await preserveExistingTheme(getNextTheme(window.id!));
-  browser.theme.update(window.id!, wrappedTheme);
+async function getWindowColor(windowId: number): Promise<string> {
+  if (isWindowColorInMemory(windowId)) {
+    return getWindowColorInMemory(windowId);
+  } else if (await isWindowColorInLocalStorage(windowId)) {
+    const color = await getWindowColorLocalStorage(windowId);
+    return color!;
+  } else {
+    const color = getRandomColor();
+    return color;
+  }
 }
 
 async function applyThemeToAllWindows() {
-  console.log('Applying theme to all windows');
   for (const window of await browser.windows.getAll()) {
-    await loadColorsFromLocalStorage(window.id!);
-    applyThemeToWindow(window);
+    const windowId = window.id!;
+    await loadWindowToMemory(windowId);
+    let color = await getWindowColor(windowId);
+    await saveWindowColor(windowId, color);
+    const wrappedTheme = await preserveExistingTheme(buildTheme(color));
+    browser.theme.update(window.id!, wrappedTheme);
   }
-}
-
-const windowsToColorMap = new Map();
-
-function isValidHexColor(color: string): boolean {
-  const hexRegExp = /^#(?:[0-9a-fA-F]{3}){1,2}$/;
-  const result = hexRegExp.test(color);
-  console.log('🚀 ~ file: background.ts ~ line 96 ~ isValidHexColor ~ result', result);
-  return result;
-}
-
-function getNextTheme(windowId: number) {
-  let color = '';
-
-  if (windowsToColorMap.has(windowId) && isValidHexColor(windowsToColorMap.get(windowId))) {
-    color = windowsToColorMap.get(windowId);
-  } else {
-    const randomizer = Math.floor(Math.random() * COLORS.length);
-    color = COLORS[randomizer];
-    windowsToColorMap.set(windowId, color);
-
-    const keyString = `peacockColor${windowId}`;
-    const storageObject: Record<string, any> = {};
-    const colorValue = color;
-    storageObject[keyString] = {
-      colorValue,
-    };
-    console.log(`Storing object: ${JSON.stringify(storageObject)}`);
-    browser.storage.local.set(storageObject);
-  }
-
-  return buildTheme(color);
-}
-
-async function loadColorsFromLocalStorage(windowId: number) {
-  const keyString = `peacockColor${windowId}`;
-  const storageObject = await browser.storage.local.get(keyString);
-  const colorStorage = storageObject[keyString] as ColorStorage;
-  console.log(`Got object: ${JSON.stringify(storageObject[keyString])}`);
-  if (!colorStorage) {
-    return;
-  }
-  const existingColor = colorStorage.colorValue;
-  windowsToColorMap.set(windowId, existingColor);
 }
 
 const cleanupWindow = (windowId: number) => {
-  windowsToColorMap.delete(windowId);
-  const keyString = `peacockColor${windowId}`;
-  browser.storage.local.remove(keyString);
+  removeWindow(windowId);
 };
 
-console.log('Loading background.ts');
+function handleMessage(request: any, sender: any, sendResponse: any) {
+  if (request.messageType === 'peacock-refresh') {
+    applyThemeToAllWindows();
+    sendResponse({ response: 'response from background script' });
+  }
+}
+
+console.log('Loading Peacock Extension.');
+applyThemeToAllWindows();
 browser.windows.onCreated.addListener(applyThemeToAllWindows);
 browser.runtime.onStartup.addListener(applyThemeToAllWindows);
-browser.runtime.onInstalled.addListener(applyThemeToAllWindows);
 browser.windows.onRemoved.addListener(cleanupWindow);
-browser.tabs.onCreated.addListener(applyThemeToAllWindows);
+browser.runtime.onMessage.addListener(handleMessage);

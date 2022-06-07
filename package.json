@@ -11,12 +11,11 @@
     "build": "rm -rf ./dist && tsc && cp ./manifest.json ./dist/manifest.json && cp -Rf ./assets ./dist/assets",
     "release": "yarn clean && yarn install && yarn build"
   },
-  "dependencies": {
+  "dependencies": {},
+  "devDependencies": {
     "eslint": "^8.12.0",
     "typescript": "^4.6.3",
-    "web-ext": "^6.8.0"
-  },
-  "devDependencies": {
+    "ts-loader": "^9.2.8",
     "web-ext-types": "^3.2.1",
     "yarn": "*"
   }

@@ -7,10 +7,24 @@
   </head>
 
   <body>
-    <form id="colorForm" name="colorForm">
-      <label for="color">Color:</label><br />
-      <input type="text" id="colorValue" name="colorValue" /><br />
-      <input type="submit" value="Submit" />
+    <form id="colorForm" class="color-form" name="colorForm">
+      <div class="form-group" style="display: flex; flex-direction: row; justify-content: center; align-items: center">
+        <label for="color">Hex Color:&nbsp;</label>
+        <input type="text" id="colorValue" name="colorValue" />
+      </div>
+      <div
+        class="form-group"
+        style="
+          display: flex;
+          flex-direction: row;
+          justify-content: right;
+          align-items: right;
+          padding-top: 5px;
+          padding-right: 10px;
+        "
+      >
+        <input type="submit" value="Save" />
+      </div>
     </form>
     <script type="module" src="../../browser-action.js"></script>
   </body>

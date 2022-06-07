@@ -1,5 +1,5 @@
 // Config
-const COLORS = ['#ec5f67', '#db7c48', '#e3b65d', '#99c794', '#5fb3b3', '#6699cc', '#c594c5', '#ab7967'];
+const COLORS = ['#ec5f67', '#ffc09f', '#ffee93', '#adf7b6', '#5fb3b3', '#6699cc', '#a0ced9', '#fcf5c7'];
 function colorSingleRgbValueToHex(colorValue) {
     const hex = colorValue.toString(16);
     return hex.length == 1 ? '0' + hex : hex;
